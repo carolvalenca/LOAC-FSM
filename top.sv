@@ -14,6 +14,8 @@ module top(input  logic clk_2,
              lcd_ALUResult, lcd_Result, lcd_WriteData, lcd_ReadData, 
            output logic lcd_MemWrite, lcd_Branch, lcd_MemtoReg, lcd_RegWrite);
 
+           
+  //máquina de dois estados simples 
   enum logic [1:0] {A, B} state;
   logic reset;
   logic [2:0] contador;

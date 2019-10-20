@@ -14,39 +14,63 @@ module top(input  logic clk_2,
              lcd_ALUResult, lcd_Result, lcd_WriteData, lcd_ReadData, 
            output logic lcd_MemWrite, lcd_Branch, lcd_MemtoReg, lcd_RegWrite);
 
-           
-  //máquina de dois estados simples 
-  enum logic [1:0] {A, B} state;
+  enum logic [1:0] {sem_pulsacao, com_pulsacao} state;
   logic reset;
-  logic [2:0] contador;
+  logic batida;
+  logic contador_ciclos;
+  logic alarme;
   
   always_comb begin
     reset <= SWI[7];
+    batida <= SWI[0];
   end
 
-  always_ff@(posedge clk_2) begin
+  always_ff@(posedge clk_2 or posedge reset) begin
     if (reset) begin
-      state <= A;
-      contador <= 0;
+      state <= sem_pulsacao;
+      contador_ciclos <= 0;
+      alarme <= 0;
     end
 
     else begin
       unique case (state)
-        A: if (contador == 3) begin
-          state <= B;
-          contador <= 0;
+        com_pulsacao: 
+          if (!batida) begin
+            if (contador_ciclos == 3) begin
+              state <= sem_pulsacao;
+              contador_ciclos <= contador_ciclos + 1;
+            end 
+            else begin
+              state <= com_pulsacao;
+              contador_ciclos <= contador_ciclos + 1;
+            end     
+          end
+
+          else begin
+            if (contador_ciclos < 3) begin
+              state <= com_pulsacao;
+              alarme <= 1;
+              contador_ciclos <= 0;
+            end
+            else begin
+              state <= com_pulsacao;
+              contador_ciclos <= 0;
+            end
+          end
+        
+        sem_pulsacao:
+          if (batida) begin
+            state <= com_pulsacao;
+            contador_ciclos <= 0;
           end
           else begin
-            state <= A;
-            contador <= contador + 1;
-          end
-        B: if (contador == 2) begin
-          state <= A;
-          contador <= 0;
-          end
-          else begin
-            state <= B;
-            contador <= contador + 1;
+            if (contador_ciclos > 5) begin
+              state <= com_pulsacao;
+              contador_ciclos <= contador_ciclos + 1;
+            end
+            else begin
+              state <= sem_pulsacao;
+              contador_ciclos <= contador_ciclos + 1;
           end
       endcase
     end
@@ -55,8 +79,8 @@ module top(input  logic clk_2,
 
   always_comb begin
     LED[7] <= clk_2;
-    LED[0] <= state == A;
-    LED[1] <= state == B;
+    LED[0] <= (state == com_pulsacao);
+    LED[1] <= (alarme);
   end
 
 endmodule
